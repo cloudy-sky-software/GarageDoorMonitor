@@ -1,0 +1,3 @@
+name: garage-door-monitor
+runtime: nodejs
+description: Infrastructure for the GarageDoorMonitor Durable Functions
