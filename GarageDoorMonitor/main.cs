@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 
 namespace GarageDoorMonitor
 {
@@ -118,7 +119,8 @@ namespace GarageDoorMonitor
         [FunctionName("Main_HttpStart")]
         public static async Task<HttpResponseMessage> HttpStart(
             [HttpTrigger(AuthorizationLevel.Function, "post")]HttpRequestMessage req,
-            [OrchestrationClient]IDurableOrchestrationClient client,
+            [DurableClient]IDurableEntityClient entityClient,
+            [DurableClient]IDurableOrchestrationClient client,
             ILogger log)
         {
             var updatedState = req.RequestUri.ParseQueryString().Get("state");
@@ -127,7 +129,7 @@ namespace GarageDoorMonitor
             // ReadEntityStateAsync may return a stale entity value.
             // See the important note under this section:
             // https://docs.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-preview#accessing-entities-from-clients
-            var currentState = await client.ReadEntityStateAsync<string>(EntityId);
+            var currentState = await entityClient.ReadEntityStateAsync<string>(EntityId);
             if (currentState.EntityExists && currentState.EntityState == updatedState)
             {
                 log.LogInformation($"Door status is already {currentState.EntityState}. Will not start a new orchestrator instance.");
@@ -143,7 +145,7 @@ namespace GarageDoorMonitor
             // For request-response style communication with entities, consider using an orchestration
             // to even update the entity.
             // See: https://docs.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-preview#accessing-entities-from-orchestrations
-            await client.SignalEntityAsync(EntityId, "update", updatedState);
+            await entityClient.SignalEntityAsync(EntityId, "update", updatedState);
             log.LogInformation($"Updated status to {updatedState}.");
             if (updatedState.ToLowerInvariant() == "closed")
             {

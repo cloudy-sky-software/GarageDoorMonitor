@@ -1,0 +1,6 @@
+config:
+  azure:environment: public
+  azure:location: WestUS
+  garage-door-monitor:timerDelayMinutes: "2"
+  garage-door-monitor:twilioAccountToken:
+    secure: AAABAMmxJRJlWrjC5ze7r3WfhhlRIpxfcpB/oS5umZ2/U64ixS8niyChbFg+FXr2/xMtYkrQlLoXMPR7Nn4blA==
