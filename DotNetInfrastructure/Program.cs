@@ -29,6 +29,8 @@ class Program
 
     static async Task<Dictionary<string, object>> CreateResources()
     {
+        // TODO: Use the following line instead of Deployment.Instance... once https://github.com/pulumi/pulumi/pull/3471 is released.
+        // var clientConfig = await Pulumi.Azure.Core.Invokes.GetClientConfig();
         var clientConfig = await Deployment.Instance.InvokeAsync<GetClientConfigResult>("azure:core/getClientConfig:getClientConfig", ResourceArgs.Empty, new InvokeOptions());
         var tenantId = clientConfig.TenantId;
 
