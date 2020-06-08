@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure";
 import * as path from "path";
 
-import { buildFunctionsProject} from "./projectBuilder";
+import { buildFunctionsProject } from "./projectBuilder";
 
 const namePrefix = "grge-mon";
 const config = new pulumi.Config();
@@ -33,8 +33,6 @@ const twilioSecret = new azure.keyvault.Secret(`${namePrefix}-twil`, {
     value: twilioAccountToken,
 });
 
-const twilioSecretUri = pulumi.interpolate`${twilioSecret.vaultUri}secrets/${twilioSecret.name}/${twilioSecret.version}`;
-
 const appInsights = new azure.appinsights.Insights(`${namePrefix}-ai`, {
     applicationType: "web",
     resourceGroupName: resourceGroup.name,
@@ -42,10 +40,10 @@ const appInsights = new azure.appinsights.Insights(`${namePrefix}-ai`, {
 
 const durableFunctionApp = new azure.appservice.ArchiveFunctionApp(`${namePrefix}-funcs`, {
     resourceGroup,
-    archive: new pulumi.asset.FileArchive("../GarageDoorMonitor/bin/Debug/netcoreapp2.1/publish"),
+    archive: new pulumi.asset.FileArchive("../GarageDoorMonitor/bin/Debug/netcoreapp3.1/publish"),
     appSettings: {
         "runtime": "dotnet",
-        "TwilioAccountToken": pulumi.interpolate`@Microsoft.KeyVault(SecretUri=${twilioSecretUri})`,
+        "TwilioAccountToken": pulumi.interpolate`@Microsoft.KeyVault(SecretUri=${twilioSecret.id})`,
         "APPINSIGHTS_INSTRUMENTATIONKEY": pulumi.interpolate`${appInsights.instrumentationKey}`,
         "TimerDelayMinutes": config.getNumber("timerDelayMinutes") || 2,
     },
@@ -61,10 +59,10 @@ const principalId = durableFunctionApp.functionApp.identity.apply(id => id.princ
 
 // Grant App Service access to KV secrets
 const appAccessPolicy = new azure.keyvault.AccessPolicy(`${namePrefix}-app-policy`, {
-   keyVaultId: kv.id,
-   tenantId: azure.config.tenantId!,
-   objectId: principalId,
-   secretPermissions: ["get"],
+    keyVaultId: kv.id,
+    tenantId: azure.config.tenantId!,
+    objectId: principalId,
+    secretPermissions: ["get"],
 }, { dependsOn: durableFunctionApp });
 
 export const webhookUrl = durableFunctionApp.endpoint;

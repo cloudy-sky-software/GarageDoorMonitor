@@ -7,8 +7,11 @@ using Pulumi.Azure.KeyVault;
 using Pulumi.Azure.KeyVault.Inputs;
 using Pulumi.Azure.AppInsights;
 using Pulumi.Azure.AppService.Inputs;
+using Pulumi.Azure.AppService;
 
 using Infra;
+using System.IO;
+using System;
 
 class Program
 {
@@ -27,11 +30,9 @@ class Program
         return System.Convert.ToString(delay);
     }
 
-    static async Task<Dictionary<string, object>> CreateResources()
+    static async Task<Dictionary<string, object?>> CreateResources()
     {
-        // TODO: Use the following line instead of Deployment.Instance... once https://github.com/pulumi/pulumi/pull/3471 is released.
-        // var clientConfig = await Pulumi.Azure.Core.Invokes.GetClientConfig();
-        var clientConfig = await Deployment.Instance.InvokeAsync<GetClientConfigResult>("azure:core/getClientConfig:getClientConfig", ResourceArgs.Empty, new InvokeOptions());
+        var clientConfig = await GetClientConfig.InvokeAsync();
         var tenantId = clientConfig.TenantId;
 
         var resourceGroup = new ResourceGroup($"{ NamePrefix }-group");
@@ -40,20 +41,19 @@ class Program
             ResourceGroupName = resourceGroup.Name,
             SkuName = "standard",
             TenantId = tenantId,
-            AccessPolicies = 
+             AccessPolicies =
             {
-                new KeyVaultAccessPoliciesArgs 
-                {
+                new KeyVaultAccessPolicyArgs {
                     TenantId = tenantId,
+                    // TODO: CHANGE ME!
                     // The current principal has to be granted permissions to Key Vault so that it can actually add and then remove
-                    // secrets to/from the Key Vault. Otherwise, 'pulumi up' and 'pulumi destroy' operations will fail.
-                    //
+                    // secrets to/from the Key Vault. Otherwise, 'pulumi up' and 'pulumi destroy' operations will fail.-                    //
                     // NOTE: This object ID value is NOT what you see in the Azure AD's App Registration screen.
                     // Run `az ad sp show` from the Azure CLI to list the correct Object ID to use here.
                     ObjectId = "your-SP-object-ID",
                     SecretPermissions = new InputList<string>{ "delete", "get", "list", "set" },
-                },
-            },
+                }
+            }
         });
 
         var twilioSecret = new Secret($"{ NamePrefix }-twil", new SecretArgs 
@@ -61,8 +61,6 @@ class Program
             KeyVaultId = kv.Id,
             Value = TwilioAccountToken,
         });
-
-        var twilioSecretUri = Output.Format($"{ twilioSecret.VaultUri }secrets/{ twilioSecret.Name }/{ twilioSecret.Version }");
 
         var appInsights = new Insights($"{ NamePrefix }-ai", new InsightsArgs
         {
@@ -73,11 +71,12 @@ class Program
         var durableFunctionApp = new ArchiveFunctionApp($"{ NamePrefix }-funcs", new ArchiveFunctionAppArgs
         {
             ResourceGroupName = resourceGroup.Name,
-            Archive = new FileArchive($"./bin/Debug/netcoreapp2.1/GarageDoorMonitor/publish"),
+            Archive = new FileArchive($"./bin/Debug/netcoreapp3.1/GarageDoorMonitor/publish"),
             AppSettings = new InputMap<string>
             {
                 { "runtime", "dotnet" },
-                { "TwilioAccountToken", Output.Format($"@Microsoft.KeyVault(SecretUri ={ twilioSecretUri })") },
+                { "FUNCTIONS_EXTENSION_VERSION", "~3" },
+                { "TwilioAccountToken", Output.Format($"@Microsoft.KeyVault(SecretUri ={ twilioSecret.Id })") },
                 { "APPINSIGHTS_INSTRUMENTATIONKEY", Output.Format($"{ appInsights.InstrumentationKey }")},
                 { "TimerDelayMinutes",  GetIntConfigOrDefault("timerDelayMinutes", 2) },
             },
@@ -87,7 +86,7 @@ class Program
 
         // Now that the app is created, update the access policies of the keyvault and
         // grant the principalId of the function app access to the vault.
-        var principalId = durableFunctionApp.FunctionApp.Identity.Apply(id => id.PrincipalId);
+        var principalId = durableFunctionApp.FunctionApp.Identity.Apply(id => id.PrincipalId ?? "0c4825d9-3901-40a8-ab89-ad4e3aeeadd9");
 
         // Grant App Service access to KV secrets
         var appAccessPolicy = new AccessPolicy($"{ NamePrefix }-app-policy", new AccessPolicyArgs
@@ -98,7 +97,7 @@ class Program
             SecretPermissions = new InputList<string> { "get" },
         });
 
-        return new Dictionary<string, object> 
+        return new Dictionary<string, object?> 
         {
             { "webhookUrl", durableFunctionApp.Endpoint },
         };

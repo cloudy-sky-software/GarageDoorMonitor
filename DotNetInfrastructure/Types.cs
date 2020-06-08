@@ -1,4 +1,8 @@
-﻿using Pulumi;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+using Pulumi;
 using Pulumi.Azure.Core;
 using Pulumi.Azure.Storage;
 using Pulumi.Azure.AppService;
@@ -68,7 +72,7 @@ namespace Infra
         /**
          * An `connection_string` block as defined below.
          */
-        public InputList<FunctionAppConnectionStringsArgs>? ConnectionStrings { get; set; }
+        public InputList<FunctionAppConnectionStringArgs>? ConnectionStrings { get; set; }
 
         /**
          * The container to use where the zip-file blob for the FunctionApp will be located. If not
@@ -146,7 +150,7 @@ namespace Infra
         /**
          * A mapping of tags to assign to the resource.
          */
-        public InputMap<object>? Tags { get; set; }
+        public InputMap<string>? Tags { get; set; }
 
         /**
          * The runtime version associated with the Function App. Defaults to `~2`.

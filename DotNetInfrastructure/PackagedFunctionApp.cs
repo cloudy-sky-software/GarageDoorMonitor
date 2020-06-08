@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Text.RegularExpressions;
 
 using Pulumi;
@@ -14,14 +12,14 @@ namespace Infra
     public sealed class FunctionAppParts
     {
         public Account Account { get; }
-        public ZipBlob ZipBlob { get; }
+        public Blob Blob { get; }
         public Container Container { get; }
         public Plan Plan { get; }
         public FunctionAppArgs FunctionAppArgs { get; }
         public Output<string> RootPath { get; }
 
-        public FunctionAppParts(Account account, Container container, ZipBlob zipBlob, Plan plan, FunctionAppArgs functionAppArgs, Output<string> rootPath) =>
-            (Account, Container, ZipBlob, Plan, FunctionAppArgs, RootPath) = (account, container, zipBlob, plan, functionAppArgs, rootPath);
+        public FunctionAppParts(Account account, Container container, Blob blob, Plan plan, FunctionAppArgs functionAppArgs, Output<string> rootPath) =>
+            (Account, Container, Blob, Plan, FunctionAppArgs, RootPath) = (account, container, blob, plan, functionAppArgs, rootPath);
     }
 
     public abstract class PackagedFunctionApp : ComponentResource
@@ -41,7 +39,7 @@ namespace Infra
         /**
          * The blob containing all the code for this FunctionApp.
          */
-        public ZipBlob ZipBlob { get; private set; }
+        public Blob Blob { get; private set; }
         /**
          * The plan this Function App runs under.
          */
@@ -65,7 +63,7 @@ namespace Infra
 
             this.Account = parts.Account;
             this.Container = parts.Container;
-            this.ZipBlob = parts.ZipBlob;
+            this.Blob = parts.Blob;
             this.Plan = parts.Plan;
             this.FunctionApp = new FunctionApp(name, parts.FunctionAppArgs, parentOpts);
             this.Endpoint = getEndpoint(this.FunctionApp, parts.RootPath);
@@ -121,7 +119,7 @@ namespace Infra
             return arg ?? defaultValue;
         }
 
-        private InputMap<string> combineAppSettings(ZipBlob zipBlob, Account account, ArchiveFunctionAppArgs args)
+        private InputMap<string> combineAppSettings(Blob zipBlob, Account account, ArchiveFunctionAppArgs args)
         {
             var codeBlobUrl = SharedAccessSignature.SignedBlobReadUrl(zipBlob, account);
             var settings = args.AppSettings;
@@ -181,12 +179,12 @@ namespace Infra
                 }, opts);
             });
 
-            var zipBlob = new ZipBlob(name, new ZipBlobArgs
+            var zipBlob = new Blob(name, new BlobArgs
             {
                 StorageAccountName = account.Name,
                 StorageContainerName = container.Name,
-                Type = "block",
-                Content = args.Archive,
+                Type = "Block",
+                Source = args.Archive
             }, opts);
 
             var functionArgs = new FunctionAppArgs

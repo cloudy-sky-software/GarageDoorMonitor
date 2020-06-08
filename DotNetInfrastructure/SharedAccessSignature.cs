@@ -6,7 +6,7 @@ namespace Infra
 {
     public static class SharedAccessSignature
     {
-        public static Output<string> SignedBlobReadUrl(ZipBlob blob, Account account)
+        public static Output<string> SignedBlobReadUrl(Blob blob, Account account)
         {
             return Output
                 .All<string>(account.Name, account.PrimaryConnectionString, blob.StorageContainerName, blob.Name)
@@ -16,7 +16,7 @@ namespace Infra
                     string connectionString = values[1];
                     string containerName = values[2];
                     string blobName = values[3];
-                    var sas = await Invokes.GetAccountBlobContainerSAS(
+                    var sas = await GetAccountBlobContainerSAS.InvokeAsync(
                         new GetAccountBlobContainerSASArgs
                         {
                             ConnectionString = connectionString,
